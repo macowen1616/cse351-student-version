@@ -44,3 +44,4 @@ def get_data_from_server(url):
             break
 
     return None
+
