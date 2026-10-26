@@ -2,8 +2,7 @@
 Course: CSE 351
 Team  : Week 06
 File  : team.py
-Author:  <Your name>
-
+Author:  Makay
 Purpose: Team Activity: 
 
 Instructions:
@@ -117,19 +116,26 @@ class Board():
             print()
 
     def _word_at_this_location(self, row, col, direction, word):
-        """ Helper function: is the word found on the board at (x, y) in a direction """
-        dir_x, dir_y = self.directions[direction]
-        highlight_copy = copy.deepcopy(self.highlighting)
-        for letter in word:
-            board_letter = self.get_letter(row, col)
-            if board_letter == letter:
-                self.highlight(row, col)
-                row += dir_x
-                col += dir_y
-            else:
-                self.highlighting = copy.deepcopy(highlight_copy)
-                return False
-        return True
+            """ Helper function: is the word found on the board at (x, y) in a direction """
+            dir_x, dir_y = self.directions[direction]
+    
+
+            changes = []
+    
+            for letter in word:
+                board_letter = self.get_letter(row, col)
+                if board_letter == letter:
+                    changes.append((row, col))
+                    row += dir_x
+                    col += dir_y
+                else:
+                    return False
+    
+            # Highlight the found word
+            for r, c in changes:
+                self.highlight(r, c)
+    
+            return True
 
     def find_word(self, word):
         """ Find a word in the board """
