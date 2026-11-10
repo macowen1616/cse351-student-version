@@ -1,3 +1,4 @@
+
 """
 Course: CSE 351 
 Assignment: 08 Prove Part 2
@@ -21,11 +22,19 @@ position:
 
 What would be your strategy?
 
-<Answer here>
+My strategy would be to keep track of the positions visited by each thread
+using a list. When a thread reaches an intersection, I would create new
+threads and give each one a copy of the current path. Each thread would
+continue adding positions to its path as it explores. When a thread finds
+the exit, it would have the complete path to display.
 
 Why would it work?
 
-<Answer here>
+It would work because each thread would maintain its own path without
+interfering with the paths of other threads. The thread that finds the exit
+would have a record of every position it visited from the starting point
+to the ending position. This path could then be used to display the
+successful route through the maze.
 
 """
 
@@ -68,6 +77,11 @@ thread_count = 0
 stop = False
 speed = SLOW_SPEED
 
+# ADDED: Lock and list to manage threads safely
+state_lock = threading.Lock()
+threads = []
+
+
 def get_color():
     """ Returns a different color when called """
     global current_color_index
@@ -78,16 +92,109 @@ def get_color():
     return color
 
 
-# TODO: Add any function(s) you need, if any, here.
+# ADDED: Recursive function to search the maze
+def search_maze(maze, row, col, color):
+    """ Recursively searches the maze using threads. """
+
+    global stop
+    global thread_count
+    global threads
+
+    # Check and mark the position safely
+    with state_lock:
+
+        if stop:
+            return
+
+        # Check if the exit has been found
+        if maze.at_end(row, col):
+            stop = True
+            return
+
+        # Check if this position is available
+        if not maze.can_move_here(row, col):
+            return
+
+        # Move to this position
+        maze.move(row, col, color)
+
+        # Find available neighboring positions
+        moves = maze.get_possible_moves(row, col)
+
+    # Stop if there are no available moves
+    if len(moves) == 0:
+        return
+
+    # Create a new thread for each additional path
+    for next_row, next_col in moves[:-1]:
+
+        with state_lock:
+
+            if stop:
+                return
+
+            # Give the new thread its own color
+            new_color = get_color()
+
+            # Count the new thread
+            thread_count += 1
+
+            # Create the new thread
+            new_thread = threading.Thread(
+                target=search_maze,
+                args=(maze, next_row, next_col, new_color)
+            )
+
+            # Save the thread
+            threads.append(new_thread)
+
+        # Start the new thread
+        new_thread.start()
+
+    # Continue searching the final path using the current thread
+    next_row, next_col = moves[-1]
+
+    search_maze(maze, next_row, next_col, color)
 
 
+# ADDED: Start the recursive threaded search
 def solve_find_end(maze):
     """ Finds the end position using threads. Nothing is returned. """
-    # When one of the threads finds the end position, stop all of them.
+
     global stop
-    stop = False
+    global thread_count
+    global current_color_index
+    global threads
 
+    # Reset global variables
+    with state_lock:
+        stop = False
+        thread_count = 0
+        current_color_index = 0
+        threads = []
 
+    # Get the starting position
+    start_row, start_col = maze.get_start_pos()
+
+    # Get the starting color
+    start_color = get_color()
+
+    # Start searching recursively
+    search_maze(maze, start_row, start_col, start_color)
+
+    # Wait for every created thread to finish
+    index = 0
+
+    while True:
+
+        with state_lock:
+            if index >= len(threads):
+                break
+
+            current_thread = threads[index]
+
+        current_thread.join()
+        index += 1
 
 
 def find_end(log, filename, delay):
